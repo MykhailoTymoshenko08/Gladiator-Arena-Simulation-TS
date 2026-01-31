@@ -1,0 +1,60 @@
+
+
+class User {
+    public name: string;
+    private _credits: number = 0;
+    addCredits(amount: number)  {
+        this._credits += amount;
+    }
+    constructor(userName: string) {
+        this.name = userName;
+    }
+    get credits(): number {
+        return this._credits;
+    }
+}
+class Library   {
+    private _items: LibraryItem[] = [];
+    private _users: User[] = [];
+    registerUser(newUser: User): void {
+        this._users.push(newUser);
+    }
+    get getUserCount(): number{
+        return this._users.length;
+    }
+    addItem(item: LibraryItem): void{
+        this._items.push(item);
+    }
+    printAllItems(): void{
+        for (const item of this._items) {   
+            console.log(item.getInfo());
+        }
+    }
+}
+abstract class LibraryItem {
+    constructor(public id: number, public title: string) {}
+
+    abstract getInfo(): string; //{
+        //return `Item: ${this.title} (ID: ${this.id})`;
+    //}
+}
+class Magazine extends LibraryItem{
+    constructor(id: number, title: string, public issueNumber: number){
+        super(id, title);
+    }
+    getInfo(): string{
+        return `Magazine ${this.title} vipusk №${this.issueNumber}`;
+    }
+}
+
+
+class DataStore<T>  {
+    private data: T[];
+    constructor(initialData: T[]){
+        this.data= initialData;
+    }
+    getValue<K extends keyof T>(index: number, key: K): T[K]{
+        const item = this.data[index];
+        return item[key];
+    }
+}
