@@ -3,78 +3,93 @@ interface Weapon {
     name: string;
     damage: number;
 }
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 abstract class Fighter {
     constructor(
         readonly name: string, 
         public hp: number,
+        public mana: number,
         public weapon: Weapon,
         private _armor: number = 0
-    ){};
-    abstract attack(target: Fighter) : Promise<void>;
-    set armor(value: number){
-        if (value > 50){
-            console.log("Броня не може бути більшою за 50%!");
-            this._armor = 50;
-        } else if (value < 0) {
-            this._armor = 0;
-        } else {
-            this._armor = value;
-        }
+    ){
+        this.armor = _armor;
+    };
+    set armor(value: number) {
+        this._armor = Math.max(0, Math.min(value, 50));
     }
-    get armor() : number{
+    get armor(): number {
         return this._armor;
     }
-    abstract takeDamage(damage: number):number;
+
+    public takeDamage(rawDamage: number): number {
+        const reducedDamage = rawDamage * (1 - this.armor / 100);
+        this.hp = Math.max(0, this.hp - reducedDamage);
+        return reducedDamage;
+    }
+
+    abstract attack(target: Fighter): Promise<void>;
+}
+
+class Mage extends Fighter {
+    async attack(target: Fighter): Promise<void> {
+        await delay(1000);
+        let finalDamage: number;
+        let actionDescription: string;
+
+        if (this.mana >= 20) {
+            this.mana -= 20;
+            const magicDamage = this.weapon.damage * 3;
+            finalDamage = target.takeDamage(magicDamage);
+            actionDescription = `випустив 🔥 ВОГНЯНУ КУЛЮ`;
+        } else {
+            this.mana += 10;
+            const weakHit = this.weapon.damage * 0.5;
+            finalDamage = target.takeDamage(weakHit);
+            actionDescription = `вдарив посохом та відновив ману ✨`;
+        }
+
+        console.log(`🧙 ${this.name} ${actionDescription} у ${target.name}. Нанесено ${finalDamage.toFixed(1)} шкоди. (MP: ${this.mana})`);
+    }
 }
 
 class Knight extends Fighter{
-    constructor(name: string, hp: number, weapon: Weapon, armor: number){
-        super(name, hp, weapon, armor);
-    }
     async attack(target: Fighter): Promise<void> {
-        const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
         await delay(1000);
         const isCrit = getRandomNumber(5) === 0;
-        const damage = isCrit ? (this.weapon.damage*2) * (1 - this.armor/100) : this.weapon.damage * (1- this.armor/100);
-        const finalDamage = target.takeDamage(damage)
-        target.hp = Math.max(0, target.hp - finalDamage);
-        console.log(`⚔️ ${this.name} вдарив ${target.name} ${isCrit ? '(КРИТ!) ' : ''}на ${finalDamage}. У ${target.name} залишилось ${target.hp} HP`);
-    }
-    takeDamage(damage: number):number{
-        return damage * (1 - this.armor/100)
+        const rawDamage = isCrit ? this.weapon.damage * 2 : this.weapon.damage;
+        const finalDamage = target.takeDamage(rawDamage);
+        console.log(`⚔️ ${this.name} атакує ${target.name}${isCrit ? ' (КРИТ!)' : ''}. Нанесено ${finalDamage.toFixed(1)} шкоди. (HP: ${target.hp.toFixed(1)})`);
     }
 }
 
 class Archer extends Fighter{
-    constructor(name: string, hp: number, weapon: Weapon, armor: number){
-        super(name, hp, weapon, armor);
-    }
     async attack(target: Fighter): Promise<void> {
-        const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
         await delay(1000);
         const isCrit = getRandomNumber(3) === 0;
-        const damage = isCrit ? (this.weapon.damage*2) * (1 - this.armor/100) : this.weapon.damage * (1- this.armor/100);
-        const finalDamage = target.takeDamage(damage)
-        target.hp = Math.max(0, target.hp - finalDamage);
-        console.log(`⚔️ ${this.name} вдарив ${target.name} ${isCrit ? '(КРИТ!) ' : ''}на ${finalDamage}. У ${target.name} залишилось ${target.hp} HP`);
-    }
-    takeDamage(damage: number):number{
-        return damage * (1 - this.armor/100)
+        const rawDamage = isCrit ? this.weapon.damage * 2 : this.weapon.damage;
+        const finalDamage = target.takeDamage(rawDamage);
+
+        console.log(`⚔️ ${this.name} атакує ${target.name}${isCrit ? ' (КРИТ!)' : ''}. Нанесено ${finalDamage.toFixed(1)} шкоди. (HP: ${target.hp.toFixed(1)})`);
     }
 }
 
 class Arena {
-    async startFight(f1: Fighter, f2: Fighter): Promise<void>{
-        console.log(`--- Бій почався: ${f1.name} VS ${f2.name} ---`);
-        let turn: number = 1;
+    async startFight(f1: Fighter, f2: Fighter): Promise<void> {
+        console.log(`--- БОЙОВЕ ТЕСТУВАННЯ: ${f1.name} VS ${f2.name} ---`);
+        let turn = 1;
+
         while (f1.hp > 0 && f2.hp > 0) {
-            console.log(`Хід №${turn}:`);
-            turn%2==1 ? await f1.attack(f2) : await f2.attack(f1);
-            turn+=1;
+            console.log(`\nХід №${turn}:`);
+            await f1.attack(f2);
+            if (f2.hp <= 0) break;
+            await f2.attack(f1);
+            turn++;
         }
-        console.log("====================");
-        console.log(f1.hp > 0 ? `🏆 ${f1.name} переміг!` : `🏆 ${f2.name} переміг!`);
+
+        console.log("\n====================");
+        const winner = f1.hp > 0 ? f1.name : f2.name;
+        console.log(`🏆 ПЕРЕМОЖЕЦЬ: ${winner.toUpperCase()}!`);
     }
 }
 
@@ -83,12 +98,12 @@ function getRandomNumber(max: number):number{
     return Math.floor(Math.random() * max);
 }
 
-const sword = { name: "Екскалібур", damage: 15 };
-const bow = { name: "Довгий лук", damage: 10 };
+const excalibur = { name: "Екскалібур", damage: 15 };
+const staff = { name: "Посох Мудрості", damage: 8 };
 
-const knight = new Knight("Артур", 100, sword, 40);
-const archer = new Archer("Робін", 80, bow, 10);
+const arthur = new Knight("Артур", 120, 0, excalibur, 40);
+const gandalf = new Mage("Гендальф", 80, 50, staff, 10);
 
-const colosseum = new Arena();
-colosseum.startFight(knight, archer);
+const arena = new Arena();
+arena.startFight(arthur, gandalf);
 
