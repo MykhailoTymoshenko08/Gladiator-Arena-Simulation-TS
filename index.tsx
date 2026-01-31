@@ -1,4 +1,4 @@
-pen
+pe
 interface Weapon {
     name: string;
     damage: number;
@@ -106,5 +106,6 @@ const gandalf = new Mage("Гендальф", 80, 50, staff, 10);
 
 const arena = new Arena();
 arena.startFight(arthur, gandalf);
+
 
 
